@@ -1,0 +1,2 @@
+this is a little instrument to allow users to have per-ip control on who gets to access a server via a web interface.
+atm it is tied to apache & digest auth. it depends on NoodlesFramework (github.com/guyromm/NoodlesFramework)
