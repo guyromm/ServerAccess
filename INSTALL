@@ -1,9 +1,19 @@
+#to get the server running
 virtualenv --no-site-packages .
 git clone 'https://github.com/guyromm/NoodlesFramework.git' noodles/
 pip install -r requirements.txt
 echo 'PW_FILE="digest-pw-filename-location"' >> 'config_local.py'
 python runserver.py
 
-#hacky and dangerous:
-visudo:
+#you need to allow the app iptables access. it has security implications :)
+visudo, then add:
 wwwuser ALL = NOPASSWD: /sbin/iptables
+
+#we need to make sure the auth info is forwarded to the app from apache. use serveraccess.httpd.conf as an example
+
+#put some sane secure defaults in iptables that would get overriden by us on a per-user,per-ip basis.
+sudo iptables -A INPUT -i lo -j ACCEPT -m comment --comment 'ServerAccess allow loopback'
+sudo iptables -A INPUT --proto tcp --dport 80 -j ACCEPT -m comment --comment 'ServerAccess allow apache'
+sudo iptables -A INPUT --proto tcp --dport 22 -j ACCEPT 'ServerAccess allow ssh'
+sudo iptables -P INPUT DROP
+
