@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+</head>
+<body>
+  <h1>user ip access management : ${user}</h1>
+  % if is_admin:
+  <h2 style='color:red'>you are admin</h2>
+  % endif
+  <form method='post'>
+    <input type='text' name="add-ip" value="${remote_ip}" />
+    <input type='submit' name='add-ip-btn' value='Add IP' />
+  <table border=1>
+    <thead>
+      <th>user</th>
+      <th>currently allowed</th>
+    </thead>
+    <tbody>
+      % for u in users:
+      <tr>
+	<td>${u}</td>
+	<td>
+	  <ul>
+	    % for r in rules[u]:
+	    <li>${r['source']} <input type='submit' value='revoke' name='revoke-${u}-${r['cnt']}-${r['source']}' /></li>
+	    % endfor
+	  </ul>
+	</td>
+      </tr>
+      % endfor
+    </tbody>
+    </table>
+  </form>
+</body>
+</html>

@@ -1,0 +1,9 @@
+virtualenv --no-site-packages .
+git clone 'https://github.com/guyromm/NoodlesFramework.git' noodles/
+pip install -r requirements.txt
+echo 'PW_FILE="digest-pw-filename-location"' >> 'config_local.py'
+python runserver.py
+
+#hacky and dangerous:
+visudo:
+wwwuser ALL = NOPASSWD: /sbin/iptables

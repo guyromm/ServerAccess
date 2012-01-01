@@ -1,0 +1,10 @@
+*~
+*.pyc
+*.pw
+noodles
+lib
+local
+include
+tmp
+bin
+config_local.py
