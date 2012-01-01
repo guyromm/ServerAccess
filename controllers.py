@@ -74,13 +74,24 @@ def revoke_access(user,ip,cnt,op_user,is_admin):
             st,op = gso(cmd) ; assert st==0
 
     pass
+class AuthErr(Exception):
+    pass
 def get_admin(r,d):
+    if not r.headers.get('Authorization'):
+        raise AuthErr('no authorization found')
+
     username = re.compile('username="([^"]+)"').search(r.headers.get('Authorization'))
     if username:
         return username.group(1)
     return d
 def index(request):
-    admin = get_admin(request,DEFAULT_ADMIN)
+    try:
+        admin = get_admin(request,DEFAULT_ADMIN)
+    except AuthErr, e:
+        r = Response()
+        r.status=403
+        r.body = 'looks like you are not authorized: %s'%e
+        return r
     is_admin = (admin==DEFAULT_ADMIN)
     if request.method=='POST':
         aip = request.params.get('add-ip')
