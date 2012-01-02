@@ -47,7 +47,12 @@ def get_fw_rules(users=None):
             if user not in rt: 
                 #raise Exception('adding user %s because not in %s'%(user,rt.keys()))
                 rt[user]=[]
-            rt[user].append({'source':source,'cnt':cnt,'pkts':rule_params.group('pkts'),'age':(datetime.datetime.now()-datetime.datetime.fromtimestamp(stamp))})
+            rt[user].append({'source':source
+                             ,'cnt':cnt
+                             ,'pkts':rule_params.group('pkts')
+                             ,'age':(datetime.datetime.now()-datetime.datetime.fromtimestamp(stamp))
+                             ,'note':dt['n']
+                             })
             all_allowed.append(source)
     return rt,all_allowed
 def get_users():
@@ -60,11 +65,11 @@ def get_users():
         if spl[1]==DIGEST_ZONE:
             rt.append(spl[0])
     return rt
-def allow_access(user,ip):
+def allow_access(user,ip,note=None):
     users = get_users()
     rules,all_allowed = get_fw_rules(users)
     if ip not in all_allowed:
-        dt = base64.b64encode(json.dumps({'u':user,'s':time.time()}))
+        dt = base64.b64encode(json.dumps({'u':user,'s':time.time(),'n':note}))
         cmd = 'sudo iptables -IINPUT %s -s %s -j ACCEPT -m comment --comment="ServerAccess d:%s"'%(IPT_INSPOS,ip,dt)
         print cmd
         st,op=gso(cmd) ; assert st==0
@@ -106,10 +111,11 @@ def index(request):
     is_admin = (admin==DEFAULT_ADMIN)
     if request.method=='POST':
         aip = request.params.get('add-ip')
+        note = request.params.get('add-ip-note')
         #raise Exception(ipre)
         assert ipre.search(aip)
         if request.params.get('add-ip-btn'):
-            allow_access(admin,aip)
+            allow_access(admin,aip,note)
         for k in request.params:
             spl = k.split('-')
             if spl[0]=='revoke':

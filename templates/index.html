@@ -8,7 +8,8 @@
   <h2 style='color:red'>you are admin</h2>
   % endif
   <form method='post'>
-    <input type='text' name="add-ip" value="${remote_ip}" />
+    ip: <input type='text' name="add-ip" value="${remote_ip}" /><br />
+    note: <input type='text' name="add-ip-note" value="" /><br />
     <input type='submit' name='add-ip-btn' value='Add IP' />
   <table border=1>
     <thead>
@@ -22,7 +23,7 @@
 	<td>
 	  <dl>
 	    % for r in rules[u]:
-	    <dt>${r['source']}</dt>
+	    <dt>${r['source']} - ${r['note']}</dt>
 	    <dd>${r['pkts']} pkts ; ${r['age']} old <input type='submit' value='revoke' name='revoke-${u}-${r['cnt']}-${r['source']}' /></dd>
 	    % endfor
 	  </dl>
