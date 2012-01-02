@@ -44,7 +44,7 @@ def get_fw_rules(users=None):
             if user not in rt: 
                 #raise Exception('adding user %s because not in %s'%(user,rt.keys()))
                 rt[user]=[]
-            rt[user].append({'source':source,'cnt':cnt})
+            rt[user].append({'source':source,'cnt':cnt,'pkts':rule_params.group('pkts')})
             all_allowed.append(source)
     return rt,all_allowed
 def get_users():

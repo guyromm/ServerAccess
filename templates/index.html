@@ -22,7 +22,7 @@
 	<td>
 	  <ul>
 	    % for r in rules[u]:
-	    <li>${r['source']} <input type='submit' value='revoke' name='revoke-${u}-${r['cnt']}-${r['source']}' /></li>
+	    <li>${r['source']} / ${r['pkts']} pkts. <input type='submit' value='revoke' name='revoke-${u}-${r['cnt']}-${r['source']}' /></li>
 	    % endfor
 	  </ul>
 	</td>
