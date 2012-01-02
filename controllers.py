@@ -12,7 +12,11 @@ import re
 #
 #format order:
 #pkts bytes target     prot opt in     out     source               destination         comment
-matchre = re.compile(re.escape('/* ServerAccess user:')+'([^ ]+)'+re.escape(' */')+'$')
+matchre = re.compile(re.escape('/* ')
+                     +'(|--comment=)'
+                     +re.escape('ServerAccess user:')
+                     +'(?P<user>[^ ]+)'
+                     +re.escape(' */')+'$')
 strrestr = ''
 for fn in ['pkts','bytes','target','prot','opt','in','out','source','destination','comment']:
     if len(strrestr): strrestr+='([ ]{1,})'
@@ -35,7 +39,7 @@ def get_fw_rules(users=None):
             #print 'searching %s\nwith\n%s'%(strrestr,row)
 
             source = rule_params.group('source')
-            user = res.group(1)
+            user = res.group('user')
             if users and user not in users: raise Exception('unknown user %s'%user)
             if user not in rt: 
                 #raise Exception('adding user %s because not in %s'%(user,rt.keys()))
@@ -58,6 +62,7 @@ def allow_access(user,ip):
     rules,all_allowed = get_fw_rules(users)
     if ip not in all_allowed:
         cmd = 'sudo iptables -IINPUT %s -s %s -j ACCEPT -m comment --comment="ServerAccess user:%s"'%(IPT_INSPOS,ip,user)
+        print cmd
         st,op=gso(cmd) ; assert st==0
     
 def revoke_access(user,ip,cnt,op_user,is_admin):
@@ -116,7 +121,8 @@ def index(request):
             if k!=admin: 
                 del rules[k]
         users = [admin]
-
-    c = {'users':users,'rules':rules,'remote_ip':request.remote_addr,'is_admin':is_admin,'user':admin}
+    remote_addr = request.headers.get('X-Forwarded-For')
+    if not remote_addr: raise AuthErr('no remote addr in X-Forwarded-For header')
+    c = {'users':users,'rules':rules,'remote_ip':remote_addr,'is_admin':is_admin,'user':admin}
     return render_to_response('index.html',c)
     #return Response('<h1>Hello, NoodlesFramework!</h1>')
