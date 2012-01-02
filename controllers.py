@@ -6,7 +6,7 @@ from noodles.http import Response
 from noodles.templates import render_to_response
 from commands import getstatusoutput as gso
 from config import PW_FILE,IPT_CHAIN,DEFAULT_ADMIN,IPT_INSPOS,DIGEST_ZONE
-import re
+import re,json,time,base64,datetime
 
 #insert:
 #
@@ -14,8 +14,8 @@ import re
 #pkts bytes target     prot opt in     out     source               destination         comment
 matchre = re.compile(re.escape('/* ')
                      +'(|--comment=)'
-                     +re.escape('ServerAccess user:')
-                     +'(?P<user>[^ ]+)'
+                     +re.escape('ServerAccess d:')
+                     +'(?P<data>[^ ]+)'
                      +re.escape(' */')+'$')
 strrestr = ''
 for fn in ['pkts','bytes','target','prot','opt','in','out','source','destination','comment']:
@@ -39,12 +39,15 @@ def get_fw_rules(users=None):
             #print 'searching %s\nwith\n%s'%(strrestr,row)
 
             source = rule_params.group('source')
-            user = res.group('user')
+            dtraw = res.group('data')
+            dt = json.loads(base64.b64decode(dtraw))
+            user = dt['u']
+            stamp = dt['s']
             if users and user not in users: raise Exception('unknown user %s'%user)
             if user not in rt: 
                 #raise Exception('adding user %s because not in %s'%(user,rt.keys()))
                 rt[user]=[]
-            rt[user].append({'source':source,'cnt':cnt,'pkts':rule_params.group('pkts')})
+            rt[user].append({'source':source,'cnt':cnt,'pkts':rule_params.group('pkts'),'age':(datetime.datetime.now()-datetime.datetime.fromtimestamp(stamp))})
             all_allowed.append(source)
     return rt,all_allowed
 def get_users():
@@ -61,7 +64,8 @@ def allow_access(user,ip):
     users = get_users()
     rules,all_allowed = get_fw_rules(users)
     if ip not in all_allowed:
-        cmd = 'sudo iptables -IINPUT %s -s %s -j ACCEPT -m comment --comment="ServerAccess user:%s"'%(IPT_INSPOS,ip,user)
+        dt = base64.b64encode(json.dumps({'u':user,'s':time.time()}))
+        cmd = 'sudo iptables -IINPUT %s -s %s -j ACCEPT -m comment --comment="ServerAccess d:%s"'%(IPT_INSPOS,ip,dt)
         print cmd
         st,op=gso(cmd) ; assert st==0
     
@@ -89,6 +93,8 @@ def get_admin(r,d):
     if username:
         return username.group(1)
     return d
+ipre = re.compile('^'+"\.".join(["(\d+)" for i in range(1,5)])+'$')
+
 def index(request):
     try:
         admin = get_admin(request,DEFAULT_ADMIN)
@@ -100,14 +106,16 @@ def index(request):
     is_admin = (admin==DEFAULT_ADMIN)
     if request.method=='POST':
         aip = request.params.get('add-ip')
+        #raise Exception(ipre)
+        assert ipre.search(aip)
         if request.params.get('add-ip-btn'):
             allow_access(admin,aip)
         for k in request.params:
             spl = k.split('-')
             if spl[0]=='revoke':
                 user = spl[1]
-                cnt = spl[2]
-                ip = spl[3]
+                cnt = int(spl[2])
+                ip = spl[3] ; assert ipre.search(ip)
                 revoke_access(user,ip,cnt,admin,is_admin)
     users = get_users()
     rules,all_allowed = get_fw_rules(users)

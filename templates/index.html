@@ -20,11 +20,12 @@
       <tr>
 	<td>${u}</td>
 	<td>
-	  <ul>
+	  <dl>
 	    % for r in rules[u]:
-	    <li>${r['source']} / ${r['pkts']} pkts. <input type='submit' value='revoke' name='revoke-${u}-${r['cnt']}-${r['source']}' /></li>
+	    <dt>${r['source']}</dt>
+	    <dd>${r['pkts']} pkts ; ${r['age']} old <input type='submit' value='revoke' name='revoke-${u}-${r['cnt']}-${r['source']}' /></dd>
 	    % endfor
-	  </ul>
+	  </dl>
 	</td>
       </tr>
       % endfor
