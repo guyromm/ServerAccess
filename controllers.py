@@ -23,10 +23,14 @@ for fn in ['pkts','bytes','target','prot','opt','in','out','source','destination
     strrestr+='(?P<%s>[^ ]+)'%fn
 strre = re.compile('^%s'%strrestr)
 
-def get_fw_rules(users=None):
+def get_fw_rules(users=None,by_user=True):
     st,op = gso('sudo iptables -tfilter -nvL %s'%IPT_CHAIN)
     assert st==0
-    rt = {} ; all_allowed=[]
+    if by_user:
+        rt = {}
+    else:
+        rt = []
+    all_allowed=[]
     cnt=0
     for row in op.split('\n'):
         row = row.strip()
@@ -44,17 +48,37 @@ def get_fw_rules(users=None):
             user = dt['u']
             stamp = dt['s']
             if users and user not in users: raise Exception('unknown user %s'%user)
-            if user not in rt: 
+            if by_user and user not in rt: 
                 #raise Exception('adding user %s because not in %s'%(user,rt.keys()))
                 rt[user]=[]
-            rt[user].append({'source':source
-                             ,'cnt':cnt
-                             ,'pkts':rule_params.group('pkts')
-                             ,'age':(datetime.datetime.now()-datetime.datetime.fromtimestamp(stamp))
-                             ,'note':dt['n']
-                             })
+            row = {'source':source
+                   ,'cnt':cnt
+                   ,'pkts':rule_params.group('pkts')
+                   ,'age':(datetime.datetime.now()-datetime.datetime.fromtimestamp(stamp))
+                   ,'note':dt['n']
+                   }
+            if by_user:
+                rt[user].append(row)
+            else:
+                row['user']=user
+                rt.append(row)
             all_allowed.append(source)
     return rt,all_allowed
+def get_rule_by_cnt(cnt):
+    rules,whatevah = get_fw_rules(by_user=False)
+    r = [r for r in rules if int(r['cnt'])==int(cnt)]
+    if not len(r): raise Exception('none found for cnt %s'%cnt)
+    if len(r)>1: raise Exception('more than one rule found with cnt %s'%cnt)
+    return r[0]
+def get_rules_by_user(cnt):
+    rules,whatevah = get_fw_rules(by_user=False)
+    r = [r for r in rules if r['user']==cnt]
+    return r
+def get_rules_by_ip(cnt):
+    rules,whatevah = get_fw_rules(by_user=False)
+    r = [r for r in rules if r['source']==cnt]
+    return r
+
 def get_users():
     fconts = open(PW_FILE,'r').read()
     rt=[]
@@ -71,7 +95,7 @@ def allow_access(user,ip,note=None):
     if ip not in all_allowed:
         dt = base64.b64encode(json.dumps({'u':user,'s':time.time(),'n':note}))
         cmd = 'sudo iptables -IINPUT %s -s %s -j ACCEPT -m comment --comment="ServerAccess d:%s"'%(IPT_INSPOS,ip,dt)
-        print cmd
+        #print cmd
         st,op=gso(cmd) ; assert st==0
     
 def revoke_access(user,ip,cnt,op_user,is_admin):
@@ -79,10 +103,10 @@ def revoke_access(user,ip,cnt,op_user,is_admin):
     if not (is_admin or user==op_user): raise Exception('auth violation')
     users = get_users()
     r,aips = get_fw_rules(users)
-    assert '.' in ip
+    assert '.' in ip,"illegal ip %s"%ip
     ur = r[user]
     for r in ur:
-        print 'comparing %s with ip %s , cnt %s'%(r,ip,cnt)
+        #print 'comparing %s with ip %s , cnt %s'%(r,ip,cnt)
         if r['source']==ip and str(r['cnt'])==str(cnt):
             cmd = 'sudo iptables -DINPUT %s'%r['cnt']
             st,op = gso(cmd) ; assert st==0
