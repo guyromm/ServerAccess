@@ -8,7 +8,7 @@ if __name__=='__main__':
     subparsers = optparser.add_subparsers(dest='command')
 
     parser_add = subparsers.add_parser('add')
-    parser_add.add_argument('--port',required=False)
+    parser_add.add_argument('--dport',required=False)
     parser_add.add_argument('ip',nargs=1)
     parser_add.add_argument('--note',dest='note')
 
@@ -20,7 +20,7 @@ if __name__=='__main__':
 
     args = optparser.parse_args()
     if args.command=='add':
-        allow_access(DEFAULT_ADMIN,args.ip[0],args.note)
+        allow_access(DEFAULT_ADMIN,args.ip[0],args.note,dport=args.dport)
     elif args.command=='del':
         if '.' in args.ip[0]:
             dip = args.ip[0]
@@ -34,12 +34,13 @@ if __name__=='__main__':
 
     elif args.command=='list':
         rules,all_allowed = get_fw_rules(by_user=False)
-        tb = prettytable.PrettyTable(['Cnt','User','Packets','Source IP','Age','Note'])
+        tb = prettytable.PrettyTable(['Cnt','User','Packets','Source IP','Destination Port','Age','Note'])
         for r in rules:
             tb.add_row([r['cnt'],
                         r['user'],
                         r['pkts'],
                         r['source'],
+                        r['dport'],
                         r['age'],
                         r['note']])
         print tb

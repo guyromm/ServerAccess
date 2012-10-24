@@ -41,6 +41,12 @@ def get_fw_rules(users=None,by_user=True):
         #print 'cnt %s : %s'%(cnt,rule_params.groups())
         if res:
             #print 'searching %s\nwith\n%s'%(strrestr,row)
+            dptre = re.compile('dpt\:(\d+)')
+            dptres = dptre.search(row)
+            if dptres:
+                dport = dptres.group(1)
+            else:
+                dport = None
 
             source = rule_params.group('source')
             dtraw = res.group('data')
@@ -56,13 +62,16 @@ def get_fw_rules(users=None,by_user=True):
                    ,'pkts':rule_params.group('pkts')
                    ,'age':(datetime.datetime.now()-datetime.datetime.fromtimestamp(stamp))
                    ,'note':dt['n']
+                   ,'dport':dport
                    }
             if by_user:
                 rt[user].append(row)
             else:
                 row['user']=user
                 rt.append(row)
-            all_allowed.append(source)
+            aaw = source
+            if dport: aaw+='=>:'+dport
+            all_allowed.append(aaw)
     return rt,all_allowed
 def get_rule_by_cnt(cnt):
     rules,whatevah = get_fw_rules(by_user=False)
@@ -89,14 +98,21 @@ def get_users():
         if spl[1]==DIGEST_ZONE:
             rt.append(spl[0])
     return rt
-def allow_access(user,ip,note=None):
+def allow_access(user,ip,note=None,dport=None):
     users = get_users()
     rules,all_allowed = get_fw_rules(users)
-    if ip not in all_allowed:
+    if dport:
+        cond = ip+'=>:'+dport in all_allowed
+    else:
+        cond = ip in all_allowed
+
+    if not cond:
         dt = base64.b64encode(json.dumps({'u':user,'s':time.time(),'n':note}))
-        cmd = 'sudo iptables -IINPUT %s -s %s -j ACCEPT -m comment --comment="ServerAccess d:%s"'%(IPT_INSPOS,ip,dt)
+        cmd = 'sudo iptables -IINPUT %s -s %s'%(IPT_INSPOS,ip)
+        if dport: cmd+=' -p tcp --dport %s'%dport
+        cmd+= ' -j ACCEPT -m comment --comment="ServerAccess d:%s"'%(dt)
         #print cmd
-        st,op=gso(cmd) ; assert st==0
+        st,op=gso(cmd) ; assert st==0,"%s => %s"%(cmd,op)
     
 def revoke_access(user,ip,cnt,op_user,is_admin):
     #we allow admin to op on all |  or user to operate on himself
