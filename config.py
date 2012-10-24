@@ -52,4 +52,8 @@ MAIL_PORT = 587
 MAIL_LOGIN = 'your smtp mail login'
 MAIL_PASSWORD = 'your smtp mail password'
 
+#for redis datastore
+TIME_TO_OVERWRITE_CLIENT_COOKIE=60
 from config_local import *
+#redis database id
+RDB=0
