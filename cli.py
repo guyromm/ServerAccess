@@ -13,10 +13,10 @@ if __name__=='__main__':
     parser_add.add_argument('--dport',required=False)
     parser_add.add_argument('ip',nargs='?')
     parser_add.add_argument('--note',dest='note')
-    parser_add.add_argument('--adduser',dest='user',required=False)
+    parser_add.add_argument('--user',dest='user',required=False)
 
     parser_del = subparsers.add_parser('del')
-    parser_add.add_argument('--deluser',dest='user',required=False)
+    parser_del.add_argument('--user',dest='user',required=False)
     parser_del.add_argument('ip',nargs=1)
 
 

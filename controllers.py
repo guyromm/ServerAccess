@@ -126,7 +126,7 @@ def allow_access(user,ip=None,note=None,dport=None):
         dcmd = 'add '
         if note: dcmd+=' --note %s'%escapeshellarg(note)
         if dport: dcmd+=' --dport=%s'%escapeshellarg(dport)
-        if user: dcmd+=' --adduser=%s'%escapeshellarg(user)
+        if user: dcmd+=' --user=%s'%escapeshellarg(user)
         if ip: dcmd+=' %s'%escapeshellarg(ip)
         fcmd = 'ssh '+dfw['ssh']+' '+escapeshellarg(dfw['cmd']%dcmd)
         print fcmd
@@ -147,7 +147,7 @@ def revoke_access(user,ip,cnt,op_user,is_admin):
 
     for dfw in DELEGATED_FIREWALLS:
         dcmd = 'del '
-        if user: dcmd+=' --deluser=%s'%escapeshellarg(user)
+        if user: dcmd+=' --user=%s'%escapeshellarg(user)
         dcmd+=' %s'%escapeshellarg(str(cnt))
         fcmd = 'ssh '+dfw['ssh']+' '+escapeshellarg(dfw['cmd']%dcmd)
         print fcmd
