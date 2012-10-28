@@ -12,6 +12,7 @@ if __name__=='__main__':
     parser_add.add_argument('--dport',required=False)
     parser_add.add_argument('ip',nargs='?')
     parser_add.add_argument('--note',dest='note')
+    parser_add.add_argument('--user',dest='user',required=False)
 
     parser_del = subparsers.add_parser('del')
     parser_del.add_argument('ip',nargs=1)
@@ -21,7 +22,9 @@ if __name__=='__main__':
 
     args = optparser.parse_args()
     if args.command=='add':
-        allow_access(DEFAULT_ADMIN,args.ip,args.note,dport=args.dport)
+        if args.user: user = args.user
+        else: user = DEFAULT_ADMIN
+        allow_access(user,args.ip,args.note,dport=args.dport)
     elif args.command=='del':
         if '.' in args.ip[0]:
             dip = args.ip[0]

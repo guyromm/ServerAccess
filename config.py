@@ -54,6 +54,9 @@ MAIL_PASSWORD = 'your smtp mail password'
 
 #for redis datastore
 TIME_TO_OVERWRITE_CLIENT_COOKIE=60
-from config_local import *
 #redis database id
 RDB=0
+#delegated FIREWALLS
+DELEGATED_FIREWALLS = []
+
+from config_local import *

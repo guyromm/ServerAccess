@@ -5,7 +5,7 @@ filedesc: default controller file
 from noodles.http import Response
 from noodles.templates import render_to_response
 from commands import getstatusoutput as gso
-from config import PW_FILE,IPT_CHAIN,DEFAULT_ADMIN,IPT_INSPOS,DIGEST_ZONE
+from config import PW_FILE,IPT_CHAIN,DEFAULT_ADMIN,IPT_INSPOS,DIGEST_ZONE,DELEGATED_FIREWALLS
 import re,json,time,base64,datetime
 
 #insert:
@@ -22,6 +22,9 @@ for fn in ['pkts','bytes','target','prot','opt','in','out','source','destination
     if len(strrestr): strrestr+='([ ]{1,})'
     strrestr+='(?P<%s>[^ ]+)'%fn
 strre = re.compile('^%s'%strrestr)
+
+def escapeshellarg(arg):
+    return "\\'".join("'" + p + "'" for p in arg.split("'"))
 
 def get_fw_rules(users=None,by_user=True):
     st,op = gso('sudo iptables -tfilter -nvL %s'%IPT_CHAIN)
@@ -109,6 +112,7 @@ def allow_access(user,ip=None,note=None,dport=None):
     else:
         cond = ip in all_allowed
 
+    
     if not cond:
         dt = base64.b64encode(json.dumps({'u':user,'s':time.time(),'n':note}))
         cmd = 'sudo iptables -IINPUT %s'%IPT_INSPOS
@@ -117,7 +121,15 @@ def allow_access(user,ip=None,note=None,dport=None):
         cmd+= ' -j ACCEPT -m comment --comment="ServerAccess d:%s"'%(dt)
         #print cmd
         st,op=gso(cmd) ; assert st==0,"%s => %s"%(cmd,op)
-    
+
+    for dfw in DELEGATED_FIREWALLS:
+        dcmd = 'add '
+        if note: dcmd+=' --note %s'%escapeshellarg(note)
+        if dport: dcmd+=' --dport=%s'%escapeshellarg(dport)
+        if ip: dcmd+=' %s'%escapeshellarg(ip)
+        fcmd = 'ssh '+dfw['ssh']+' '+escapeshellarg(dfw['cmd']%dcmd)
+        st,op = gso(cmd) ; assert st==0,"%s => %s"%(cmd,op)
+
 def revoke_access(user,ip,cnt,op_user,is_admin):
     #we allow admin to op on all |  or user to operate on himself
     if not (is_admin or user==op_user): raise Exception('auth violation')
