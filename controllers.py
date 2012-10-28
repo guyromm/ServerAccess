@@ -139,19 +139,27 @@ def revoke_access(user,ip,cnt,op_user,is_admin):
     r,aips = get_fw_rules(users)
     assert '.' in ip,"illegal ip %s"%ip
     ur = r[user]
+    print 'walking rules for user %s'%user
+
+
     for r in ur:
         #print 'comparing %s with ip %s , cnt %s'%(r,ip,cnt)
         if r['source']==ip and str(r['cnt'])==str(cnt):
+
+            #delegated erase
+            for dfw in DELEGATED_FIREWALLS:
+                dcmd = 'del '
+                dcmd+=' --user=%s'%escapeshellarg(user)
+                dcmd+=' %s'%escapeshellarg(r['source'])
+                fcmd = 'ssh '+dfw['ssh']+' '+escapeshellarg(dfw['cmd']%dcmd)
+                print fcmd
+                st,op = gso(fcmd) ; assert st==0,"%s => %s"%(fcmd,op)
+
+            #local erase
             cmd = 'sudo iptables -DINPUT %s'%r['cnt']
             st,op = gso(cmd) ; assert st==0
+            print cmd
 
-    for dfw in DELEGATED_FIREWALLS:
-        dcmd = 'del '
-        if user: dcmd+=' --user=%s'%escapeshellarg(user)
-        dcmd+=' %s'%escapeshellarg(str(cnt))
-        fcmd = 'ssh '+dfw['ssh']+' '+escapeshellarg(dfw['cmd']%dcmd)
-        print fcmd
-        st,op = gso(fcmd) ; assert st==0,"%s => %s"%(fcmd,op)
 
     pass
 class AuthErr(Exception):

@@ -24,8 +24,9 @@ if __name__=='__main__':
     parser_list.add_argument('--json',dest='json',action='store_const',const=True)
 
     args = optparser.parse_args()
-    if 'user' in args: user = args.user
-    else: user = DEFAULT_ADMIN
+    if args.command in ['add','del']:
+        if args.user: user = args.user
+        else: user = DEFAULT_ADMIN
 
     if args.command=='add':
         allow_access(user,args.ip,args.note,dport=args.dport)
