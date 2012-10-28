@@ -1,6 +1,7 @@
 from controllers import get_fw_rules,get_users,allow_access,revoke_access,get_rules_by_ip,get_rule_by_cnt
 import argparse
 import prettytable
+import json
 from config import *
 
 if __name__=='__main__':
@@ -16,7 +17,7 @@ if __name__=='__main__':
     parser_del.add_argument('ip',nargs=1)
 
     parser_list = subparsers.add_parser('list')
-    
+    parser_list.add_argument('--json',dest='json',action='store_const',const=True)
 
     args = optparser.parse_args()
     if args.command=='add':
@@ -34,13 +35,19 @@ if __name__=='__main__':
 
     elif args.command=='list':
         rules,all_allowed = get_fw_rules(by_user=False)
-        tb = prettytable.PrettyTable(['Cnt','User','Packets','Source IP','Destination Port','Age','Note'])
-        for r in rules:
-            tb.add_row([r['cnt'],
-                        r['user'],
-                        r['pkts'],
-                        r['source'],
-                        r['dport'],
-                        r['age'],
-                        r['note']])
-        print tb
+        if args.json:
+            for r in rules:
+                r['age'] = str(r['age'])
+            j = json.dumps(rules,indent=True)
+            print j
+        else:
+            tb = prettytable.PrettyTable(['Cnt','User','Packets','Source IP','Destination Port','Age','Note'])
+            for r in rules:
+                tb.add_row([r['cnt'],
+                            r['user'],
+                            r['pkts'],
+                            r['source'],
+                            r['dport'],
+                            r['age'],
+                            r['note']])
+            print tb
