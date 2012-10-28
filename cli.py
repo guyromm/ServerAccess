@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from controllers import get_fw_rules,get_users,allow_access,revoke_access,get_rules_by_ip,get_rule_by_cnt
 import argparse
 import prettytable
@@ -12,28 +13,32 @@ if __name__=='__main__':
     parser_add.add_argument('--dport',required=False)
     parser_add.add_argument('ip',nargs='?')
     parser_add.add_argument('--note',dest='note')
-    parser_add.add_argument('--user',dest='user',required=False)
+    parser_add.add_argument('--adduser',dest='user',required=False)
 
     parser_del = subparsers.add_parser('del')
+    parser_add.add_argument('--deluser',dest='user',required=False)
     parser_del.add_argument('ip',nargs=1)
+
 
     parser_list = subparsers.add_parser('list')
     parser_list.add_argument('--json',dest='json',action='store_const',const=True)
 
     args = optparser.parse_args()
+    if 'user' in args: user = args.user
+    else: user = DEFAULT_ADMIN
+
     if args.command=='add':
-        if args.user: user = args.user
-        else: user = DEFAULT_ADMIN
         allow_access(user,args.ip,args.note,dport=args.dport)
     elif args.command=='del':
         if '.' in args.ip[0]:
             dip = args.ip[0]
             rules = get_rules_by_ip(dip)
+
             for r in rules:
-                revoke_access(r['user'],r['source'],r['cnt'],DEFAULT_ADMIN,True)
+                revoke_access(user,r['source'],r['cnt'],DEFAULT_ADMIN,True)
         else:
             r = get_rule_by_cnt(args.ip[0])
-            revoke_access(r['user'],r['source'],r['cnt'],DEFAULT_ADMIN,True)
+            revoke_access(user,r['source'],r['cnt'],DEFAULT_ADMIN,True)
             
 
     elif args.command=='list':
