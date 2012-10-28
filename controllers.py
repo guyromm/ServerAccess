@@ -98,17 +98,21 @@ def get_users():
         if spl[1]==DIGEST_ZONE:
             rt.append(spl[0])
     return rt
-def allow_access(user,ip,note=None,dport=None):
+def allow_access(user,ip=None,note=None,dport=None):
+    assert ip or dport,"at least ip or dport have to be specified."
     users = get_users()
     rules,all_allowed = get_fw_rules(users)
-    if dport:
+    if ip and dport:
         cond = ip+'=>:'+dport in all_allowed
+    elif dport:
+        cond = '0.0.0.0/0=>:'+dport in all_allowed
     else:
         cond = ip in all_allowed
 
     if not cond:
         dt = base64.b64encode(json.dumps({'u':user,'s':time.time(),'n':note}))
-        cmd = 'sudo iptables -IINPUT %s -s %s'%(IPT_INSPOS,ip)
+        cmd = 'sudo iptables -IINPUT %s'%IPT_INSPOS
+        if ip: cmd+=' -s %s'%(ip)
         if dport: cmd+=' -p tcp --dport %s'%dport
         cmd+= ' -j ACCEPT -m comment --comment="ServerAccess d:%s"'%(dt)
         #print cmd
