@@ -5,7 +5,7 @@ filedesc: default controller file
 from noodles.http import Response
 from noodles.templates import render_to_response
 from commands import getstatusoutput as gso
-from config import PW_FILE,IPT_CHAIN,DEFAULT_ADMIN,IPT_INSPOS,DIGEST_ZONE
+from config import PW_FILE,IPT_CHAIN,DEFAULT_ADMIN,IPT_INSPOS,DIGEST_ZONE,DELEGATED_FIREWALLS
 import re,json,time,base64,datetime
 
 #insert:
@@ -23,10 +23,17 @@ for fn in ['pkts','bytes','target','prot','opt','in','out','source','destination
     strrestr+='(?P<%s>[^ ]+)'%fn
 strre = re.compile('^%s'%strrestr)
 
-def get_fw_rules(users=None):
+def escapeshellarg(arg):
+    return "\\'".join("'" + p + "'" for p in arg.split("'"))
+
+def get_fw_rules(users=None,by_user=True):
     st,op = gso('sudo iptables -tfilter -nvL %s'%IPT_CHAIN)
     assert st==0
-    rt = {} ; all_allowed=[]
+    if by_user:
+        rt = {}
+    else:
+        rt = []
+    all_allowed=[]
     cnt=0
     for row in op.split('\n'):
         row = row.strip()
@@ -37,6 +44,12 @@ def get_fw_rules(users=None):
         #print 'cnt %s : %s'%(cnt,rule_params.groups())
         if res:
             #print 'searching %s\nwith\n%s'%(strrestr,row)
+            dptre = re.compile('dpt\:(\d+)')
+            dptres = dptre.search(row)
+            if dptres:
+                dport = dptres.group(1)
+            else:
+                dport = None
 
             source = rule_params.group('source')
             dtraw = res.group('data')
@@ -44,17 +57,40 @@ def get_fw_rules(users=None):
             user = dt['u']
             stamp = dt['s']
             if users and user not in users: raise Exception('unknown user %s'%user)
-            if user not in rt: 
+            if by_user and user not in rt: 
                 #raise Exception('adding user %s because not in %s'%(user,rt.keys()))
                 rt[user]=[]
-            rt[user].append({'source':source
-                             ,'cnt':cnt
-                             ,'pkts':rule_params.group('pkts')
-                             ,'age':(datetime.datetime.now()-datetime.datetime.fromtimestamp(stamp))
-                             ,'note':dt['n']
-                             })
-            all_allowed.append(source)
+            row = {'source':source
+                   ,'cnt':cnt
+                   ,'pkts':rule_params.group('pkts')
+                   ,'age':(datetime.datetime.now()-datetime.datetime.fromtimestamp(stamp))
+                   ,'note':dt['n']
+                   ,'dport':dport
+                   }
+            if by_user:
+                rt[user].append(row)
+            else:
+                row['user']=user
+                rt.append(row)
+            aaw = source
+            if dport: aaw+='=>:'+dport
+            all_allowed.append(aaw)
     return rt,all_allowed
+def get_rule_by_cnt(cnt):
+    rules,whatevah = get_fw_rules(by_user=False)
+    r = [r for r in rules if int(r['cnt'])==int(cnt)]
+    if not len(r): raise Exception('none found for cnt %s'%cnt)
+    if len(r)>1: raise Exception('more than one rule found with cnt %s'%cnt)
+    return r[0]
+def get_rules_by_user(cnt):
+    rules,whatevah = get_fw_rules(by_user=False)
+    r = [r for r in rules if r['user']==cnt]
+    return r
+def get_rules_by_ip(cnt):
+    rules,whatevah = get_fw_rules(by_user=False)
+    r = [r for r in rules if r['source']==cnt]
+    return r
+
 def get_users():
     fconts = open(PW_FILE,'r').read()
     rt=[]
@@ -65,27 +101,65 @@ def get_users():
         if spl[1]==DIGEST_ZONE:
             rt.append(spl[0])
     return rt
-def allow_access(user,ip,note=None):
+def allow_access(user,ip=None,note=None,dport=None):
+    assert ip or dport,"at least ip or dport have to be specified."
     users = get_users()
     rules,all_allowed = get_fw_rules(users)
-    if ip not in all_allowed:
-        dt = base64.b64encode(json.dumps({'u':user,'s':time.time(),'n':note}))
-        cmd = 'sudo iptables -IINPUT %s -s %s -j ACCEPT -m comment --comment="ServerAccess d:%s"'%(IPT_INSPOS,ip,dt)
-        print cmd
-        st,op=gso(cmd) ; assert st==0
+    if ip and dport:
+        cond = ip+'=>:'+dport in all_allowed
+    elif dport:
+        cond = '0.0.0.0/0=>:'+dport in all_allowed
+    else:
+        cond = ip in all_allowed
+
     
+    if not cond:
+        dt = base64.b64encode(json.dumps({'u':user,'s':time.time(),'n':note}))
+        cmd = 'sudo iptables -IINPUT %s'%IPT_INSPOS
+        if ip: cmd+=' -s %s'%(ip)
+        if dport: cmd+=' -p tcp --dport %s'%dport
+        cmd+= ' -j ACCEPT -m comment --comment="ServerAccess d:%s"'%(dt)
+        #print cmd
+        st,op=gso(cmd) ; assert st==0,"%s => %s"%(cmd,op)
+
+    for dfw in DELEGATED_FIREWALLS:
+        dcmd = 'add '
+        if note: dcmd+=' --note %s'%escapeshellarg(note)
+        if dport: dcmd+=' --dport=%s'%escapeshellarg(dport)
+        if user: dcmd+=' --user=%s'%escapeshellarg(user)
+        if ip: dcmd+=' %s'%escapeshellarg(ip)
+        fcmd = 'ssh '+dfw['ssh']+' '+escapeshellarg(dfw['cmd']%dcmd)
+        print fcmd
+        st,op = gso(fcmd) ; assert st==0,"%s => %s"%(fcmd,op)
+
 def revoke_access(user,ip,cnt,op_user,is_admin):
     #we allow admin to op on all |  or user to operate on himself
     if not (is_admin or user==op_user): raise Exception('auth violation')
     users = get_users()
     r,aips = get_fw_rules(users)
-    assert '.' in ip
+    assert '.' in ip,"illegal ip %s"%ip
     ur = r[user]
+    print 'walking rules for user %s'%user
+
+
     for r in ur:
-        print 'comparing %s with ip %s , cnt %s'%(r,ip,cnt)
+        #print 'comparing %s with ip %s , cnt %s'%(r,ip,cnt)
         if r['source']==ip and str(r['cnt'])==str(cnt):
+
+            #delegated erase
+            for dfw in DELEGATED_FIREWALLS:
+                dcmd = 'del '
+                dcmd+=' --user=%s'%escapeshellarg(user)
+                dcmd+=' %s'%escapeshellarg(r['source'])
+                fcmd = 'ssh '+dfw['ssh']+' '+escapeshellarg(dfw['cmd']%dcmd)
+                print fcmd
+                st,op = gso(fcmd) ; assert st==0,"%s => %s"%(fcmd,op)
+
+            #local erase
             cmd = 'sudo iptables -DINPUT %s'%r['cnt']
             st,op = gso(cmd) ; assert st==0
+            print cmd
+
 
     pass
 class AuthErr(Exception):

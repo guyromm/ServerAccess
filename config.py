@@ -6,6 +6,7 @@ import os
 
 DEBUG = True
 TESTING = True
+AUTO_RELOAD = False
 
 # Specify the server port
 PORT = 8090
@@ -50,5 +51,12 @@ MAIL_SERVER = 'smtp.example.com'
 MAIL_PORT = 587
 MAIL_LOGIN = 'your smtp mail login'
 MAIL_PASSWORD = 'your smtp mail password'
+
+#for redis datastore
+TIME_TO_OVERWRITE_CLIENT_COOKIE=60
+#redis database id
+RDB=0
+#delegated FIREWALLS
+DELEGATED_FIREWALLS = []
 
 from config_local import *
