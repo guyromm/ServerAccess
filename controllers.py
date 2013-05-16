@@ -43,6 +43,7 @@ def get_fw_rules(users=None,by_user=True):
         cnt+=1
         #print 'cnt %s : %s'%(cnt,rule_params.groups())
         if res:
+            proto = rule_params.group(7)
             #print 'searching %s\nwith\n%s'%(strrestr,row)
             dptre = re.compile('dpt\:(\d+)')
             dptres = dptre.search(row)
@@ -66,6 +67,7 @@ def get_fw_rules(users=None,by_user=True):
                    ,'age':(datetime.datetime.now()-datetime.datetime.fromtimestamp(stamp))
                    ,'note':dt['n']
                    ,'dport':dport
+                   ,'proto':proto
                    }
             if by_user:
                 rt[user].append(row)
@@ -74,6 +76,7 @@ def get_fw_rules(users=None,by_user=True):
                 rt.append(row)
             aaw = source
             if dport: aaw+='=>:'+dport
+            aaw+='(%s)'%proto
             all_allowed.append(aaw)
     return rt,all_allowed
 def get_rule_by_cnt(cnt):
@@ -101,23 +104,26 @@ def get_users():
         if spl[1]==DIGEST_ZONE:
             rt.append(spl[0])
     return rt
-def allow_access(user,ip=None,note=None,dport=None):
+def allow_access(user,ip=None,note=None,dport=None,proto='tcp'):
     assert ip or dport,"at least ip or dport have to be specified."
     users = get_users()
     rules,all_allowed = get_fw_rules(users)
+
+
     if ip and dport:
-        cond = ip+'=>:'+dport in all_allowed
+        cond = ip+'=>:'+dport+'(%s)'%proto in all_allowed
     elif dport:
-        cond = '0.0.0.0/0=>:'+dport in all_allowed
+        cond = '0.0.0.0/0=>:'+dport+'(%s)'%proto in all_allowed
     else:
-        cond = ip in all_allowed
+        cond = ip+'(%s)'%proto in all_allowed
 
     
     if not cond:
+        print 'executing add.'
         dt = base64.b64encode(json.dumps({'u':user,'s':time.time(),'n':note}))
         cmd = 'sudo iptables -IINPUT %s'%IPT_INSPOS
         if ip: cmd+=' -s %s'%(ip)
-        if dport: cmd+=' -p tcp --dport %s'%dport
+        if dport: cmd+=' -p %s --dport %s'%(proto,dport)
         cmd+= ' -j ACCEPT -m comment --comment="ServerAccess d:%s"'%(dt)
         #print cmd
         st,op=gso(cmd) ; assert st==0,"%s => %s"%(cmd,op)

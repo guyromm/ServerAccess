@@ -11,6 +11,7 @@ if __name__=='__main__':
 
     parser_add = subparsers.add_parser('add')
     parser_add.add_argument('--dport',required=False)
+    parser_add.add_argument('--proto',default='tcp',dest='proto',choices=['tcp','udp','icmp'])
     parser_add.add_argument('ip',nargs='?')
     parser_add.add_argument('--note',dest='note')
     parser_add.add_argument('--user',dest='user',required=False)
@@ -29,7 +30,7 @@ if __name__=='__main__':
         else: user = DEFAULT_ADMIN
 
     if args.command=='add':
-        allow_access(user,args.ip,args.note,dport=args.dport)
+        allow_access(user,args.ip,args.note,dport=args.dport,proto=args.proto)
     elif args.command=='del':
         if '.' in args.ip[0]:
             dip = args.ip[0]
@@ -50,13 +51,14 @@ if __name__=='__main__':
             j = json.dumps(rules,indent=True)
             print j
         else:
-            tb = prettytable.PrettyTable(['Cnt','User','Packets','Source IP','Destination Port','Age','Note'])
+            tb = prettytable.PrettyTable(['Cnt','User','Packets','Source IP','Destination Port','Protocol','Age','Note'])
             for r in rules:
                 tb.add_row([r['cnt'],
                             r['user'],
                             r['pkts'],
                             r['source'],
                             r['dport'],
+                            r['proto'],
                             r['age'],
                             r['note']])
             print tb
