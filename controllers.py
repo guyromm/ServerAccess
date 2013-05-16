@@ -56,7 +56,7 @@ def get_fw_rules(users=None,by_user=True):
             dt = json.loads(base64.b64decode(dtraw))
             user = dt['u']
             stamp = dt['s']
-            if users and user not in users: raise Exception('unknown user %s'%user)
+            if users and user not in users: raise Exception('unknown user %s in row %s'%(user,row))
             if by_user and user not in rt: 
                 #raise Exception('adding user %s because not in %s'%(user,rt.keys()))
                 rt[user]=[]
