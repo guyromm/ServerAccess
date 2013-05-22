@@ -22,7 +22,7 @@ for fn in ['pkts','bytes','target','prot','opt','in','out','source','destination
     if len(strrestr): strrestr+='([ ]{1,})'
     strrestr+='(?P<%s>[^ ]+)'%fn
 strre = re.compile('^%s'%strrestr)
-alphanum = re.compile('^([\da-z ]*)$',re.I)
+alphanum = re.compile('^([\da-z _\-]*)$',re.I)
 def escapeshellarg(arg):
     return "\\'".join("'" + p + "'" for p in arg.split("'"))
 
