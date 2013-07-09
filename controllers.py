@@ -144,8 +144,12 @@ def revoke_access(user,ip,cnt,op_user,is_admin):
     users = get_users()
     r,aips = get_fw_rules(users)
     assert '.' in ip,"illegal ip %s"%ip
-    ur = r[user]
-    print 'walking rules for user %s'%user
+    if user in r:
+        ur = r[user]
+        print 'walking rules for user %s'%user
+    else:
+        ur = []
+        print 'no rules for %s'%user
 
 
     for r in ur:
