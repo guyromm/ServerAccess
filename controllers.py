@@ -22,7 +22,7 @@ for fn in ['pkts','bytes','target','prot','opt','in','out','source','destination
     if len(strrestr): strrestr+='([ ]{1,})'
     strrestr+='(?P<%s>[^ ]+)'%fn
 strre = re.compile('^%s'%strrestr)
-
+alphanum = re.compile('^([\da-z _\-]*)$',re.I)
 def escapeshellarg(arg):
     return "\\'".join("'" + p + "'" for p in arg.split("'"))
 
@@ -105,6 +105,7 @@ def get_users():
             rt.append(spl[0])
     return rt
 def allow_access(user,ip=None,note=None,dport=None,proto='tcp'):
+    assert alphanum.search(note),"note must be alphanumeric."
     assert ip or dport,"at least ip or dport have to be specified."
     users = get_users()
     rules,all_allowed = get_fw_rules(users)
@@ -130,6 +131,7 @@ def allow_access(user,ip=None,note=None,dport=None,proto='tcp'):
 
     for dfw in DELEGATED_FIREWALLS:
         dcmd = 'add '
+        assert alphanum.search(note),"note must be alphanumeric."
         if note: dcmd+=' --note %s'%escapeshellarg(note)
         if dport: dcmd+=' --dport=%s'%escapeshellarg(dport)
         if user: dcmd+=' --user=%s'%escapeshellarg(user)
@@ -196,6 +198,7 @@ def index(request):
     if request.method=='POST':
         aip = request.params.get('add-ip')
         note = request.params.get('add-ip-note')
+        assert alphanum.search(note),"note must be alphanumeric."
         #raise Exception(ipre)
         assert ipre.search(aip)
         if request.params.get('add-ip-btn'):
@@ -222,5 +225,6 @@ def index(request):
     remote_addr = request.headers.get('X-Forwarded-For')
     if not remote_addr: raise AuthErr('no remote addr in X-Forwarded-For header')
     c = {'users':users,'rules':rules,'remote_ip':remote_addr,'is_admin':is_admin,'user':admin}
+    #raise Exception(c)
     return render_to_response('index.html',c)
     #return Response('<h1>Hello, NoodlesFramework!</h1>')

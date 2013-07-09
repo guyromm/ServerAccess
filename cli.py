@@ -13,7 +13,7 @@ if __name__=='__main__':
     parser_add.add_argument('--dport',required=False)
     parser_add.add_argument('--proto',default='tcp',dest='proto',choices=['tcp','udp','icmp'])
     parser_add.add_argument('ip',nargs='?')
-    parser_add.add_argument('--note',dest='note')
+    parser_add.add_argument('--note',dest='note',default='')
     parser_add.add_argument('--user',dest='user',required=False)
 
     parser_del = subparsers.add_parser('del')
